@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Box,
   Container,
@@ -23,7 +23,8 @@ import {
 import AccountSettings from './AccountSettings';
 import AccountSettingsV2 from './AccountSettingsV2';
 import AccountSettingsV3 from './AccountSettingsV3';
-import { theme, layout } from './theme';
+import DiscoverInstitutions from './DiscoverInstitutions';
+import { theme, layout, palette, space } from './theme';
 
 /* Sidebar width resolved from the 8pt rhythm token (design-system §4.1). */
 const DRAWER_WIDTH = theme.spacing(layout.drawerWidthUnits);
@@ -42,6 +43,12 @@ type NavGroup = {
 };
 
 const NAV_GROUPS: NavGroup[] = [
+  {
+    id: 'discover',
+    items: [
+      { id: 'discover-institutions', label: 'Discover Institutions', path: '/discover' },
+    ],
+  },
   {
     id: 'user',
     title: 'User Settings',
@@ -83,61 +90,72 @@ function Shell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [selected, setSelected] = useState<string>('account');
 
+  /* Keep selection in sync with the URL so route-backed items win on refresh
+     or deep-link. Selection is the single source of truth for active styling
+     — only one item can be active at a time. Items without a `path` simply
+     track the last click (no navigation). */
+  useEffect(() => {
+    const match = NAV_GROUPS.flatMap((g) => g.items).find(
+      (i) => i.path === location.pathname,
+    );
+    if (match) setSelected(match.id);
+  }, [location.pathname]);
+
   const handleSelect = (item: NavItem) => {
     setSelected(item.id);
     setMobileOpen(false);
     if (item.path) navigate(item.path);
   };
 
-  const isActive = (item: NavItem) => {
-    if (item.path) return location.pathname === item.path;
-    return selected === item.id;
-  };
+  const isActive = (item: NavItem) => selected === item.id;
 
   const sidebar = (
     <Box
       sx={{
         width: DRAWER_WIDTH,
         height: '100%',
-        bgcolor: 'background.paper',
+        bgcolor: 'background.default',
         display: 'flex',
         flexDirection: 'column',
-        px: 2,
-        py: 2,
+        pt: space[3],
       }}
       role="navigation"
       aria-label="Settings"
     >
-      {NAV_GROUPS.map((group, groupIndex) => (
-        <Box key={group.id}>
-          {groupIndex > 0 && <Divider sx={{ my: 1 }} />}
+      {NAV_GROUPS.map((group, groupIndex) => {
+        /* Untitled groups rely on a thin divider for separation (matches
+           the Discover sidebar's flat, edge-to-edge look). Titled groups
+           let the overline header carry the visual break instead. */
+        const needsDivider = groupIndex > 0 && !group.title;
+        return (
+          <Box key={group.id}>
+            {needsDivider && <Divider sx={{ my: space['0.5'] }} />}
 
-          {group.title && (
-            <Typography
-              variant="overline"
-              sx={{
-                display: 'block',
-                px: 1.5,
-                color: 'text.secondary',
-              }}
-            >
-              {group.title}
-            </Typography>
-          )}
+            {group.title && (
+              <Box sx={{ pl: space[3], pr: space[3], pt: space['3.5'], pb: space['1.5'] }}>
+                <Typography
+                  variant="overline"
+                  sx={{ display: 'block', color: palette.neutral[300] }}
+                >
+                  {group.title}
+                </Typography>
+              </Box>
+            )}
 
-          <List disablePadding>
-            {group.items.map((item) => (
-              <SidebarItem
-                key={item.id}
-                label={item.label}
-                selected={isActive(item)}
-                danger={item.danger}
-                onClick={() => handleSelect(item)}
-              />
-            ))}
-          </List>
-        </Box>
-      ))}
+            <List disablePadding>
+              {group.items.map((item) => (
+                <SidebarItem
+                  key={item.id}
+                  label={item.label}
+                  selected={isActive(item)}
+                  danger={item.danger}
+                  onClick={() => handleSelect(item)}
+                />
+              ))}
+            </List>
+          </Box>
+        );
+      })}
     </Box>
   );
 
@@ -199,9 +217,12 @@ function Shell() {
 
         <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
           <Routes>
-            <Route path="/" element={<AccountSettings />} />
+            {/* Home shows V3 — the current My Account design. */}
+            <Route path="/" element={<AccountSettingsV3 />} />
+            <Route path="/v1" element={<AccountSettings />} />
             <Route path="/v2" element={<AccountSettingsV2 />} />
-            <Route path="/v3" element={<AccountSettingsV3 />} />
+            {/* Keep /v3 as an alias so existing links don't break. */}
+            <Route path="/v3" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Container>
@@ -213,7 +234,12 @@ function Shell() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Shell />
+      <Routes>
+        {/* Discover renders its own full-page layout (sidebar + content). */}
+        <Route path="/discover" element={<DiscoverInstitutions />} />
+        {/* Everything else stays inside the Settings shell. */}
+        <Route path="/*" element={<Shell />} />
+      </Routes>
     </BrowserRouter>
   );
 }
@@ -238,11 +264,14 @@ function SidebarItem({
       selected={selected}
       onClick={onClick}
       sx={{
-        px: 1.5,
-        py: 1,
-        my: 0.25,
-        // radius-md (6px) per design-system §6 — uses theme.shape.borderRadius.
-        borderRadius: 1,
+        /* Flat, edge-to-edge item (matches Discover sidebar). Active state
+           is shown by a purple left bar + tinted background instead of a
+           rounded pill, so no border-radius here. */
+        pl: space[3],
+        pr: space[3],
+        py: space['1.5'],
+        borderRadius: 0,
+        position: 'relative',
         // WCAG 2.5.8 / design-system §13.2 touch target — 44pt minimum.
         minHeight: (t) => t.spacing(layout.touchTargetUnits),
         color: danger ? 'error.main' : 'text.primary',
@@ -252,14 +281,29 @@ function SidebarItem({
             : 'action.hover',
         },
         '&.Mui-selected': {
-          bgcolor: (t) => alpha(t.palette.primary.main, 0.1),
+          bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
           color: 'primary.main',
           '&:hover': {
-            bgcolor: (t) => alpha(t.palette.primary.main, 0.14),
+            bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
           },
         },
       }}
     >
+      {selected && (
+        <Box
+          aria-hidden
+          sx={{
+            position: 'absolute',
+            left: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 3,
+            height: 18,
+            bgcolor: 'primary.main',
+            borderRadius: 0.5,
+          }}
+        />
+      )}
       <ListItemText
         primary={label}
         primaryTypographyProps={{

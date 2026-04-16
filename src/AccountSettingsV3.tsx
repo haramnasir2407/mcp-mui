@@ -159,10 +159,13 @@ const textFieldSx = (t: Theme): SystemStyleObject<Theme> => ({
     paddingRight: t.spacing(space[2]),
     color: t.palette.text.primary,
   },
+  /* Label: let MUI's built-in scale(0.75) transform drive the shrink. The
+     notched <legend> sizes itself from the root label font (at 0.75em), so
+     overriding the shrunk fontSize separately makes the notch cutout wider
+     than the visible label. Keep one fontSize across both states. */
   '& .MuiInputLabel-root': {
     color: t.palette.text.secondary,
     fontSize: t.typography.body1.fontSize,
-    '&.MuiInputLabel-shrink': { fontSize: t.typography.body2.fontSize },
     '&.Mui-focused': { color: t.palette.primary.main },
   },
   '& .MuiFormHelperText-root': {
