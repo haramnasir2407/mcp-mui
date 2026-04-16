@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp:*)",
+      "Read(//Users/haram/.claude/**)",
+      "Read(//usr/local/bin/**)",
+      "Bash(command -v claude)",
+      "Bash(npm list:*)",
+      "Bash(npm root:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "mcp__2d02fe7e-f424-42e7-86b6-3997bc54662c__get_design_context",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(grep -n \"#[0-9a-fA-F]\\\\{3,8\\\\}\\\\|rgba\\\\?\\(\" src/AccountSettingsV3.tsx)",
+      "Bash(grep -nE \"fontSize: [0-9]|lineHeight: [0-9]|letterSpacing: '\" /Users/haram/dev/mcp-mui/src/*.tsx)"
+    ]
+  }
+}
